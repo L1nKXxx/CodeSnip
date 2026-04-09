@@ -3,19 +3,58 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { codeToHtml } from "@/lib/highlight";
 import { guessLanguage } from "@/lib/langDetect";
 import { isTauri } from "@/lib/tauri";
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+const MIN_SCALE = 0.55;
+const MAX_SCALE = 12;
 const scrollbarClass =
   "[scrollbar-width:thin] [scrollbar-color:rgba(161,161,170,0.65)_rgba(39,39,42,0.45)] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-zinc-900/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-500/65 [&::-webkit-scrollbar-thumb:hover]:bg-zinc-400/75 [&::-webkit-scrollbar-corner]:bg-zinc-900/40";
 
+function getCaretOffset(root: HTMLElement): number {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return 0;
+  const range = selection.getRangeAt(0);
+  const pre = range.cloneRange();
+  pre.selectNodeContents(root);
+  pre.setEnd(range.endContainer, range.endOffset);
+  return pre.toString().length;
+}
+
+function setCaretOffset(root: HTMLElement, targetOffset: number) {
+  const selection = window.getSelection();
+  if (!selection) return;
+  const range = document.createRange();
+  let offset = Math.max(0, targetOffset);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    const textLength = node.textContent?.length ?? 0;
+    if (offset <= textLength) {
+      range.setStart(node, offset);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      return;
+    }
+    offset -= textLength;
+    node = walker.nextNode();
+  }
+  range.selectNodeContents(root);
+  range.collapse(false);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 export default function StickyCard() {
-  const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
   const measureRef = useRef<HTMLPreElement | null>(null);
   const lastCtrlAtRef = useRef<number>(0);
+  const pendingCaretRef = useRef<number | null>(null);
+  const pendingScrollRef = useRef<{ top: number; left: number } | null>(null);
   const [manualInput, setManualInput] = useState<string>("");
   const [html, setHtml] = useState<string>("");
   const [highlightError, setHighlightError] = useState<string>("");
@@ -62,16 +101,12 @@ export default function StickyCard() {
   }, [manualInput, effectiveLang]);
 
   useLayoutEffect(() => {
-    const measureEl = measureRef.current;
-    if (!measureEl) return;
-    const rect = measureEl.getBoundingClientRect();
-    const nextWidth = Math.max(860, Math.ceil(rect.width) + 64);
-    const nextHeight = Math.max(560, Math.ceil(rect.height) + 64);
+    // Keep a stable viewport so long content overflows and remains scrollable.
     setContentSize((prev) => {
-      if (prev.width === nextWidth && prev.height === nextHeight) return prev;
-      return { width: nextWidth, height: nextHeight };
+      if (prev.width === 860 && prev.height === 560) return prev;
+      return { width: 860, height: 560 };
     });
-  }, [manualInput]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -105,7 +140,7 @@ export default function StickyCard() {
       } catch {
         // ignore
       }
-      window.setTimeout(() => inputRef.current?.focus(), 0);
+      window.setTimeout(() => editorRef.current?.focus(), 0);
     };
     const mount = async () => {
       if (!isTauri()) return;
@@ -156,7 +191,7 @@ export default function StickyCard() {
       if (text.trim()) {
         setManualInput(text);
       }
-      window.setTimeout(() => inputRef.current?.focus(), 0);
+      window.setTimeout(() => editorRef.current?.focus(), 0);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
@@ -181,9 +216,41 @@ export default function StickyCard() {
     }
   };
 
+  useLayoutEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    if (!html) {
+      editor.innerHTML = "";
+      return;
+    }
+    editor.innerHTML = html;
+    const pending = pendingCaretRef.current;
+    if (pending !== null) {
+      setCaretOffset(editor, pending);
+      pendingCaretRef.current = null;
+    }
+    const scroll = pendingScrollRef.current;
+    if (scroll) {
+      editor.scrollTop = scroll.top;
+      editor.scrollLeft = scroll.left;
+      pendingScrollRef.current = null;
+    }
+  }, [html]);
+
   return (
     <div
       className="relative select-none"
+      onMouseDownCapture={(e) => {
+        if (!e.ctrlKey || e.button !== 0 || !isTauri()) return;
+        e.preventDefault();
+        void (async () => {
+          try {
+            await getCurrentWindow().startDragging();
+          } catch {
+            // ignore
+          }
+        })();
+      }}
       onDoubleClick={(e) => {
         e.preventDefault();
         void closeWindow();
@@ -192,23 +259,18 @@ export default function StickyCard() {
       <pre
         ref={measureRef}
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-0 m-0 whitespace-pre font-mono text-sm leading-6 opacity-0"
+        className="pointer-events-none absolute left-0 top-0 m-0 whitespace-pre font-mono text-base leading-7 opacity-0"
       >
         {manualInput || " "}
       </pre>
       <div
-        className="origin-top-left bg-zinc-900/95 transition-[opacity,width,height] duration-75"
+        className="origin-top-left overflow-visible bg-transparent transition-[opacity,width,height] duration-75"
         style={{
           opacity,
-          width: `${contentSize.width * scale}px`,
-          height: `${contentSize.height * scale}px`,
+          width: `${contentSize.width}px`,
+          height: `${contentSize.height}px`,
         }}
       >
-        <div
-          className="absolute left-0 top-0 z-10 h-7 w-full cursor-move"
-          data-tauri-drag-region
-          title="拖动窗口"
-        />
         <div
           className="relative"
           style={{
@@ -219,46 +281,34 @@ export default function StickyCard() {
           }}
         >
           <div
-            ref={previewRef}
-            className="h-full overflow-hidden bg-zinc-900/95 p-8"
-          >
-            {html ? (
-              <div
-                className={[
-                  "text-base",
-                  "leading-7",
-                  "[&_.shiki]:!bg-transparent",
-                  "[&_.shiki]:p-0",
-                  "[&_.shiki]:m-0",
-                  "[&_.shiki_pre]:m-0",
-                  "[&_.shiki_pre]:bg-transparent",
-                  "[&_.shiki_pre]:overflow-auto",
-                  "[&_.shiki_code]:font-mono",
-                ].join(" ")}
-                dangerouslySetInnerHTML={{ __html: html }}
-              />
-            ) : (
-              <div className="flex h-full min-h-40 items-center justify-center text-sm text-zinc-500">
-                等待粘贴代码...
-              </div>
-            )}
-            {highlightError && (
-              <div className="mt-2 rounded-md bg-red-900/20 p-2 text-xs text-red-400">
-                代码高亮错误: {highlightError}
-              </div>
-            )}
-          </div>
-          <textarea
-            ref={inputRef}
-            autoFocus
-            className={`absolute inset-0 h-full w-full resize-none overflow-scroll bg-transparent p-8 pt-10 font-mono text-base leading-7 text-transparent caret-zinc-100 outline-none selection:bg-zinc-500/40 ${scrollbarClass}`}
-            value={manualInput}
-            onChange={(e) => setManualInput(e.target.value)}
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            data-placeholder="粘贴代码到这里实时预览"
+            className={[
+              `h-full overflow-x-scroll overflow-y-scroll bg-zinc-900/95 p-8 font-mono text-base leading-7 text-zinc-100 outline-none ${scrollbarClass}`,
+              "pt-10",
+              "empty:before:pointer-events-none empty:before:text-zinc-500 empty:before:content-[attr(data-placeholder)]",
+              "[&_.shiki]:!bg-transparent",
+              "[&_.shiki]:p-0",
+              "[&_.shiki]:m-0",
+              "[&_.shiki_pre]:m-0",
+              "[&_.shiki_pre]:bg-transparent",
+              "[&_.shiki_pre]:overflow-visible",
+              "[&_.shiki_code]:font-mono",
+            ].join(" ")}
+            onInput={(e) => {
+              const current = e.currentTarget;
+              pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
+              pendingCaretRef.current = getCaretOffset(current);
+              const nextText = current.innerText.replace(/\r/g, "");
+              setManualInput(nextText);
+            }}
             onWheel={(e) => {
               if (e.ctrlKey) {
                 e.preventDefault();
                 const delta = e.deltaY;
-                setScale((s) => clamp(s + (delta > 0 ? -0.05 : 0.05), 0.25, 3));
+                setScale((s) => clamp(s + (delta > 0 ? -0.06 : 0.06), MIN_SCALE, MAX_SCALE));
                 return;
               }
               if (e.shiftKey) {
@@ -267,18 +317,14 @@ export default function StickyCard() {
                 setOpacity((o) => clamp(o + (delta > 0 ? -0.08 : 0.08), 0, 1));
               }
             }}
-            onScroll={(e) => {
-              if (!previewRef.current) return;
-              previewRef.current.scrollTop = e.currentTarget.scrollTop;
-              previewRef.current.scrollLeft = e.currentTarget.scrollLeft;
-            }}
-            wrap="off"
             spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            placeholder="粘贴代码到这里实时预览"
             data-tauri-drag-region={false}
           />
+          {highlightError && (
+            <div className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-red-900/30 px-2 py-1 text-xs text-red-300">
+              代码高亮错误: {highlightError}
+            </div>
+          )}
         </div>
       </div>
       {settingsOpen ? (
