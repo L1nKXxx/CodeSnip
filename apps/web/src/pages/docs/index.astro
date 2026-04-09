@@ -1,20 +1,19 @@
 ---
 import { getCollection } from "astro:content";
 
-export async function GET() {
-  const entries = await getCollection("docs");
-  const first = entries
-    .slice()
-    .sort((a, b) => {
-      const ag = a.data.sidebar.group.localeCompare(b.data.sidebar.group, "zh-CN");
-      if (ag !== 0) return ag;
-      return a.data.sidebar.order - b.data.sidebar.order;
-    })[0];
+const entries = await getCollection("docs");
+const first = entries
+  .slice()
+  .sort((a, b) => {
+    const ag = a.data.sidebar.group.localeCompare(b.data.sidebar.group, "zh-CN");
+    if (ag !== 0) return ag;
+    return a.data.sidebar.order - b.data.sidebar.order;
+  })[0];
 
-  return new Response(null, {
-    status: 302,
-    headers: { Location: first ? `/docs/${first.slug}` : "/" },
-  });
+if (first) {
+  return Astro.redirect(`/docs/${first.slug}`);
 }
+
+return Astro.redirect("/");
 ---
 
