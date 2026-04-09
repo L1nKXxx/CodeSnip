@@ -5,12 +5,18 @@ use tauri_plugin_autostart::{MacosLauncher, ManagerExt as AutostartExt};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 const DEFAULT_HOTKEY: &str = "Ctrl+Ctrl";
+const DEFAULT_DRAG_MODIFIER: &str = "Alt";
+const DEFAULT_ZOOM_MODIFIER: &str = "Ctrl";
+const DEFAULT_OPACITY_MODIFIER: &str = "Shift";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AppSettings {
   hotkey: String,
   autostart: bool,
+  drag_modifier: String,
+  zoom_modifier: String,
+  opacity_modifier: String,
 }
 
 impl Default for AppSettings {
@@ -18,7 +24,20 @@ impl Default for AppSettings {
     Self {
       hotkey: DEFAULT_HOTKEY.to_string(),
       autostart: false,
+      drag_modifier: DEFAULT_DRAG_MODIFIER.to_string(),
+      zoom_modifier: DEFAULT_ZOOM_MODIFIER.to_string(),
+      opacity_modifier: DEFAULT_OPACITY_MODIFIER.to_string(),
     }
+  }
+}
+
+fn parse_modifier(value: &str) -> Option<&'static str> {
+  let normalized = value.trim().to_ascii_uppercase();
+  match normalized.as_str() {
+    "CTRL" | "CONTROL" => Some("Ctrl"),
+    "ALT" => Some("Alt"),
+    "SHIFT" => Some("Shift"),
+    _ => None,
   }
 }
 
@@ -139,6 +158,7 @@ pub fn run() {
       set_click_through,
       set_always_on_top,
       exit_app,
+      save_text_file,
       get_settings,
       update_settings
     ])
@@ -170,11 +190,33 @@ fn exit_app(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
-fn get_settings(app: tauri::AppHandle, state: tauri::State<AppState>) -> Result<AppSettings, String> {
-  let settings = state.settings.lock().map_err(|e| e.to_string())?.clone();
+fn save_text_file(text: String, suggested_name: Option<String>) -> Result<String, String> {
+  let default_name = suggested_name.unwrap_or_else(|| "codesnip.txt".to_string());
+  let file_path = rfd::FileDialog::new()
+    .set_file_name(&default_name)
+    .add_filter("Text", &["txt"])
+    .save_file();
+  let Some(path) = file_path else {
+    return Err("用户已取消保存".into());
+  };
+  fs::write(&path, text).map_err(|e| e.to_string())?;
+  Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn get_settings(_app: tauri::AppHandle, state: tauri::State<AppState>) -> Result<AppSettings, String> {
+  let mut settings = state.settings.lock().map_err(|e| e.to_string())?.clone();
   if settings.hotkey.is_empty() {
-    let fallback = load_settings(&app);
-    return Ok(fallback);
+    settings.hotkey = DEFAULT_HOTKEY.to_string();
+  }
+  if parse_modifier(&settings.drag_modifier).is_none() {
+    settings.drag_modifier = DEFAULT_DRAG_MODIFIER.to_string();
+  }
+  if parse_modifier(&settings.zoom_modifier).is_none() {
+    settings.zoom_modifier = DEFAULT_ZOOM_MODIFIER.to_string();
+  }
+  if parse_modifier(&settings.opacity_modifier).is_none() {
+    settings.opacity_modifier = DEFAULT_OPACITY_MODIFIER.to_string();
   }
   Ok(settings)
 }
@@ -185,12 +227,24 @@ fn update_settings(
   state: tauri::State<AppState>,
   hotkey: String,
   autostart: bool,
+  drag_modifier: String,
+  zoom_modifier: String,
+  opacity_modifier: String,
 ) -> Result<AppSettings, String> {
   if hotkey.trim().is_empty() {
     return Err("热键不能为空".into());
   }
   let Some(shortcut) = parse_shortcut(&hotkey) else {
     return Err("当前仅支持 Ctrl+Ctrl / Alt+Alt / Shift+Shift".into());
+  };
+  let Some(normalized_drag_modifier) = parse_modifier(&drag_modifier) else {
+    return Err("拖动快捷键仅支持 Ctrl / Alt / Shift".into());
+  };
+  let Some(normalized_zoom_modifier) = parse_modifier(&zoom_modifier) else {
+    return Err("缩放快捷键仅支持 Ctrl / Alt / Shift".into());
+  };
+  let Some(normalized_opacity_modifier) = parse_modifier(&opacity_modifier) else {
+    return Err("透明度快捷键仅支持 Ctrl / Alt / Shift".into());
   };
 
   let mut guard = state.settings.lock().map_err(|e| e.to_string())?;
@@ -216,6 +270,9 @@ fn update_settings(
 
   guard.hotkey = hotkey;
   guard.autostart = autostart;
+  guard.drag_modifier = normalized_drag_modifier.to_string();
+  guard.zoom_modifier = normalized_zoom_modifier.to_string();
+  guard.opacity_modifier = normalized_opacity_modifier.to_string();
   save_settings(&app, &guard)?;
   Ok(guard.clone())
 }

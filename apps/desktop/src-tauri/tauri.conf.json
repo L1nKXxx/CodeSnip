@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "identifier": "com.codesnip.app",
   "build": {
-    "frontendDist": "../.next",
+    "frontendDist": "../out",
+    "beforeBuildCommand": "pnpm build",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "pnpm dev"
   },
