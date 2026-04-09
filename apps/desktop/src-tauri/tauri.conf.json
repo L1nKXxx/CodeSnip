@@ -1,0 +1,24 @@
+{
+  "productName": "codesnip",
+  "version": "0.1.0",
+  "identifier": "com.codesnip.app",
+  "build": {
+    "frontendDist": "../.next",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "pnpm dev"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CodeSnip",
+        "width": 980,
+        "height": 680,
+        "decorations": false,
+        "resizable": true,
+        "alwaysOnTop": true,
+        "transparent": true,
+        "shadow": false
+      }
+    ]
+  }
+}

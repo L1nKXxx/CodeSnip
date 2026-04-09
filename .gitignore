@@ -39,6 +39,7 @@ Desktop.ini
 # VS Code / Cursor
 .vscode/
 .cursor/
+.git.monorepo-backup-desktop/
 
 # ---- Build / cache ----
 .turbo/
