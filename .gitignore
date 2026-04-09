@@ -1,0 +1,48 @@
+# ---- Dependencies / package managers ----
+node_modules/
+.pnp.*
+.yarn/
+.yarnrc.yml
+
+# pnpm
+pnpm-debug.log*
+
+# ---- Logs ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+debug.log*
+*.log
+
+# ---- Env ----
+.env
+.env.*.local
+
+# ---- Next.js (desktop renderer) ----
+.next/
+out/
+
+# ---- Astro (website) ----
+apps/web/dist/
+.astro/
+
+# ---- Tauri / Rust (desktop) ----
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# VS Code / Cursor
+.vscode/
+.cursor/
+
+# ---- Build / cache ----
+.turbo/
+.cache/
+.parcel-cache/
+coverage/
+

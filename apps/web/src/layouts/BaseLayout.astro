@@ -1,0 +1,50 @@
+---
+const { title, description } = Astro.props as {
+  title: string;
+  description?: string;
+};
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    {description ? <meta name="description" content={description} /> : null}
+  </head>
+  <body class="min-h-dvh bg-zinc-950 text-zinc-50 antialiased">
+    <div class="mx-auto max-w-6xl px-6">
+      <header class="flex items-center justify-between py-6">
+        <a href="/" class="font-semibold tracking-tight text-zinc-50">
+          CodeSnip
+        </a>
+        <nav class="flex items-center gap-4 text-sm text-zinc-300">
+          <a class="hover:text-zinc-50" href="/features">特性</a>
+          <a class="hover:text-zinc-50" href="/docs">文档</a>
+          <a class="rounded-lg bg-white/10 px-3 py-1.5 text-zinc-50 hover:bg-white/15" href="/docs#download">
+            下载
+          </a>
+        </nav>
+      </header>
+    </div>
+
+    <main class="mx-auto max-w-6xl px-6 pb-20">
+      <slot />
+    </main>
+
+    <footer class="border-t border-white/10">
+      <div class="mx-auto max-w-6xl px-6 py-10 text-sm text-zinc-400">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>© {new Date().getFullYear()} CodeSnip</div>
+          <div class="flex gap-4">
+            <a class="hover:text-zinc-200" href="https://tauri.app/" target="_blank" rel="noreferrer">Tauri</a>
+            <a class="hover:text-zinc-200" href="https://astro.build/" target="_blank" rel="noreferrer">Astro</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+

@@ -1,0 +1,53 @@
+---
+import BaseLayout from "./BaseLayout.astro";
+import type { SidebarGroup } from "../lib/docsSidebar";
+
+const { title, description, sidebar, currentPath } = Astro.props as {
+  title: string;
+  description?: string;
+  sidebar: SidebarGroup[];
+  currentPath: string;
+};
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="grid gap-10 lg:grid-cols-[260px_1fr]">
+    <aside class="lg:sticky lg:top-6 lg:h-[calc(100dvh-48px)] lg:overflow-auto">
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div class="text-xs font-semibold uppercase tracking-wide text-zinc-400">文档</div>
+        <div class="mt-2 space-y-4">
+          {
+            sidebar.map((g) => (
+              <div>
+                <div class="px-2 text-xs font-medium text-zinc-300">{g.title}</div>
+                <div class="mt-2 space-y-1">
+                  {g.items.map((it) => {
+                    const active = currentPath === it.href || currentPath === `${it.href}/`;
+                    return (
+                      <a
+                        href={it.href}
+                        class={[
+                          "block rounded-lg px-2 py-1.5 text-sm",
+                          active ? "bg-white/10 text-zinc-50" : "text-zinc-300 hover:bg-white/10 hover:text-zinc-50",
+                        ].join(" ")}
+                      >
+                        {it.title}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
+          }
+        </div>
+      </div>
+    </aside>
+
+    <article class="min-w-0">
+      <div class="prose prose-invert max-w-none prose-headings:scroll-mt-24 prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/30">
+        <slot />
+      </div>
+    </article>
+  </div>
+</BaseLayout>
+

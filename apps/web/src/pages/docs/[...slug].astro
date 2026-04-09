@@ -1,0 +1,33 @@
+---
+import { getCollection } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+import { buildSidebar } from "../../lib/docsSidebar";
+
+export async function getStaticPaths() {
+  const entries = await getCollection("docs");
+  return entries.map((e) => ({ params: { slug: e.slug } }));
+}
+
+const { slug } = Astro.params;
+const slugPath = String(slug);
+
+const entries = await getCollection("docs");
+const entry = entries.find((e) => e.slug === slugPath);
+if (!entry) {
+  throw new Error(`Doc not found: ${slugPath}`);
+}
+
+const sidebar = buildSidebar(entries);
+const { Content } = await entry.render();
+---
+
+<DocsLayout
+  title={`${entry.data.title} - CodeSnip 文档`}
+  description={entry.data.description}
+  sidebar={sidebar}
+  currentPath={Astro.url.pathname}
+>
+  <h1>{entry.data.title}</h1>
+  <Content />
+</DocsLayout>
+

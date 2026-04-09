@@ -1,0 +1,74 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="CodeSnip - 轻量级桌面贴图（代码粘贴增强）"
+  description="一个跨平台轻量级桌面贴图工具（类似 Snipaste），对代码粘贴做了增强：自动识别语言、语法高亮、透明置顶贴图。"
+>
+  <section class="py-14">
+    <div class="grid gap-10 md:grid-cols-2 md:items-center">
+      <div>
+        <div class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+          Tauri + Next.js + Shiki
+        </div>
+        <h1 class="mt-5 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
+          把复制的代码，变成随处可贴的高亮卡片
+        </h1>
+        <p class="mt-4 text-base leading-7 text-zinc-300">
+          CodeSnip 是一个跨平台、轻量级桌面贴图工具。复制任意代码到剪贴板，窗口会自动识别语言并渲染为漂亮的高亮贴图，支持透明度与缩放调节、置顶与鼠标穿透。
+        </p>
+        <div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <a
+            href="/docs#download"
+            class="inline-flex items-center justify-center rounded-xl bg-white px-4 py-2.5 text-sm font-medium text-zinc-950 hover:bg-zinc-100"
+          >
+            下载（即将提供）
+          </a>
+          <a
+            href="/features"
+            class="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-50 hover:bg-white/10"
+          >
+            查看特性
+          </a>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 shadow-2xl">
+        <div class="text-xs text-zinc-300">预览</div>
+        <pre class="mt-4 overflow-auto rounded-xl bg-zinc-950/60 p-4 text-sm leading-6 text-zinc-100">
+<code is:raw>function sticky(code: string) {
+  const lang = "ts";
+  return { alwaysOnTop: true, opacity: 0.92, lang };
+}</code>
+        </pre>
+        <div class="mt-4 grid grid-cols-2 gap-3 text-sm text-zinc-200">
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div class="text-zinc-300">自动高亮</div>
+            <div class="mt-1 font-medium">Shiki 渲染</div>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 p-4">
+            <div class="text-zinc-300">窗口控制</div>
+            <div class="mt-1 font-medium">置顶 / 透明 / 穿透</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <div class="text-sm font-medium">贴图窗口</div>
+      <div class="mt-2 text-sm leading-6 text-zinc-300">透明、无边框、永远置顶；支持拖拽移动与滚轮缩放。</div>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <div class="text-sm font-medium">代码粘贴增强</div>
+      <div class="mt-2 text-sm leading-6 text-zinc-300">自动识别语言并高亮；深浅主题；适合截图、讲解、录屏。</div>
+    </div>
+    <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+      <div class="text-sm font-medium">交互快捷</div>
+      <div class="mt-2 text-sm leading-6 text-zinc-300">右键菜单快速调整；双击隐藏；鼠标穿透一键切换。</div>
+    </div>
+  </section>
+</BaseLayout>

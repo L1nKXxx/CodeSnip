@@ -1,0 +1,13 @@
+{
+  "name": "codesnip-workspace",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "desktop:dev": "pnpm -C apps/desktop dev:tauri",
+    "desktop:build": "pnpm -C apps/desktop build:tauri",
+    "web:dev": "pnpm -C apps/web dev",
+    "web:build": "pnpm -C apps/web build",
+    "lint": "pnpm -C apps/desktop lint && pnpm -C apps/web lint"
+  }
+}
+
