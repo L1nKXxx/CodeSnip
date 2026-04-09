@@ -21,5 +21,9 @@
         "shadow": false
       }
     ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"]
   }
 }
