@@ -33,4 +33,3 @@ pnpm web:build
 ```bash
 pnpm desktop:dev
 ```
-

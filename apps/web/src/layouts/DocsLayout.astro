@@ -1,20 +1,25 @@
 ---
 import BaseLayout from "./BaseLayout.astro";
 import type { SidebarGroup } from "../lib/docsSidebar";
+import type { Lang } from "../i18n/strings";
+import { ui } from "../i18n/strings";
 
-const { title, description, sidebar, currentPath } = Astro.props as {
+const { title, description, sidebar, currentPath, lang = "zh" } = Astro.props as {
   title: string;
   description?: string;
   sidebar: SidebarGroup[];
   currentPath: string;
+  lang?: Lang;
 };
+
+const t = ui[lang];
 ---
 
-<BaseLayout title={title} description={description}>
+<BaseLayout title={title} description={description} lang={lang}>
   <div class="grid gap-10 lg:grid-cols-[260px_1fr]">
     <aside class="lg:sticky lg:top-6 lg:h-[calc(100dvh-48px)] lg:overflow-auto">
       <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div class="text-xs font-semibold uppercase tracking-wide text-zinc-400">文档</div>
+        <div class="text-xs font-semibold uppercase tracking-wide text-zinc-400">{t.docsSidebarTitle}</div>
         <div class="mt-2 space-y-4">
           {
             sidebar.map((g) => (
@@ -50,4 +55,3 @@ const { title, description, sidebar, currentPath } = Astro.props as {
     </article>
   </div>
 </BaseLayout>
-

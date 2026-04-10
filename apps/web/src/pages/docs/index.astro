@@ -1,7 +1,7 @@
 ---
 import { getCollection } from "astro:content";
 
-const entries = await getCollection("docs");
+const entries = await getCollection("docs", (e) => e.slug.startsWith("zh/"));
 const first = entries
   .slice()
   .sort((a, b) => {
@@ -11,9 +11,8 @@ const first = entries
   })[0];
 
 if (first) {
-  return Astro.redirect(`/docs/${first.slug}`);
+  return Astro.redirect(`/docs/${first.slug.slice("zh/".length)}`);
 }
 
 return Astro.redirect("/");
 ---
-

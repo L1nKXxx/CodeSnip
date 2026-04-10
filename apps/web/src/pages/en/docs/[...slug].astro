@@ -1,33 +1,33 @@
 ---
 import { getCollection } from "astro:content";
-import DocsLayout from "../../layouts/DocsLayout.astro";
-import { buildSidebar } from "../../lib/docsSidebar";
-import { ui } from "../../i18n/strings";
+import DocsLayout from "../../../layouts/DocsLayout.astro";
+import { buildSidebar } from "../../../lib/docsSidebar";
+import { ui } from "../../../i18n/strings";
 
 export async function getStaticPaths() {
-  const prefix = "zh/";
+  const prefix = "en/";
   const entries = await getCollection("docs", (e) => e.slug.startsWith(prefix));
   return entries.map((e) => ({
     params: { slug: e.slug.slice(prefix.length) },
   }));
 }
 
-const localePrefix = "zh/";
+const localePrefix = "en/";
 const slugPath = String(Astro.params.slug ?? "");
 const entries = await getCollection("docs", (e) => e.slug.startsWith(localePrefix));
 const entry = entries.find((e) => e.slug === `${localePrefix}${slugPath}`);
 if (!entry) {
-  throw new Error(`Doc not found: zh/${slugPath}`);
+  throw new Error(`Doc not found: en/${slugPath}`);
 }
 
-const sidebar = buildSidebar(entries, { lang: "zh", localePrefix, basePath: "/docs" });
+const sidebar = buildSidebar(entries, { lang: "en", localePrefix, basePath: "/en/docs" });
 const { Content } = await entry.render();
-const t = ui.zh;
+const t = ui.en;
 ---
 
 <DocsLayout
-  lang="zh"
-  title={`${entry.data.title} - ${t.docsTitleSuffix}`}
+  lang="en"
+  title={`${entry.data.title} — ${t.docsTitleSuffix}`}
   description={entry.data.description}
   sidebar={sidebar}
   currentPath={Astro.url.pathname}

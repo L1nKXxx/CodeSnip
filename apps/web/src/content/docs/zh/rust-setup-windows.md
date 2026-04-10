@@ -26,4 +26,3 @@ cargo --version
 
 - Desktop development with C++
 - Windows SDK（10/11）
-
