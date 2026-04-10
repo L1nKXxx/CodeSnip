@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, PhysicalSize } from "@tauri-apps/api/window";
 import { codeToHtml } from "@/lib/highlight";
 import { guessLanguage } from "@/lib/langDetect";
 import { isTauri } from "@/lib/tauri";
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const MIN_SCALE = 0.55;
-const MAX_SCALE = 1.5;
+const MAX_SCALE = 10.0;
 const BASE_WIDTH = 860;
 const BASE_HEIGHT = 560;
 const modifierOptions = ["Ctrl", "Alt", "Shift"] as const;
@@ -182,12 +182,20 @@ export default function StickyCard() {
   }, [manualInput, effectiveLang]);
 
   useLayoutEffect(() => {
-    // Keep a stable viewport so long content overflows and remains scrollable.
-    setContentSize((prev) => {
-      if (prev.width === BASE_WIDTH && prev.height === BASE_HEIGHT) return prev;
-      return { width: BASE_WIDTH, height: BASE_HEIGHT };
-    });
-  }, []);
+    // Update Tauri window size when scale changes
+    if (isTauri()) {
+      void (async () => {
+        try {
+          const win = getCurrentWindow();
+          const newWidth = Math.max(BASE_WIDTH, BASE_WIDTH * scale);
+          const newHeight = Math.max(BASE_HEIGHT, BASE_HEIGHT * scale);
+          await win.setSize(new PhysicalSize(Math.round(newWidth), Math.round(newHeight)));
+        } catch (error) {
+          console.error("setSize failed:", error);
+        }
+      })();
+    }
+  }, [scale]);
 
   useEffect(() => {
     const releaseDragLock = () => {
@@ -416,7 +424,7 @@ export default function StickyCard() {
   return (
     <div
       ref={rootRef}
-      className="relative inline-block select-none pointer-events-none"
+      className="relative block select-none pointer-events-none"
       onDoubleClick={(e) => {
         if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
         e.preventDefault();
