@@ -5,7 +5,7 @@
   "build": {
     "frontendDist": "../out",
     "beforeBuildCommand": "pnpm build",
-    "devUrl": "http://localhost:3000",
+    "devUrl": "http://localhost:3001",
     "beforeDevCommand": "pnpm dev"
   },
   "app": {
@@ -24,6 +24,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["msi", "nsis"]
+    "targets": [
+      "msi",
+      "nsis"
+    ]
   }
 }

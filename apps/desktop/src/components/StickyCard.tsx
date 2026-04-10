@@ -10,7 +10,7 @@ import { isTauri } from "@/lib/tauri";
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 const MIN_SCALE = 0.55;
-const MAX_SCALE = Number.POSITIVE_INFINITY;
+const MAX_SCALE = 1.5;
 const BASE_WIDTH = 860;
 const BASE_HEIGHT = 560;
 const modifierOptions = ["Ctrl", "Alt", "Shift"] as const;
@@ -349,6 +349,12 @@ export default function StickyCard() {
         try {
           const { getCurrentWindow } = await import("@tauri-apps/api/window");
           const win = getCurrentWindow();
+          const isFocused = await win.isFocused();
+
+          if (isFocused) {
+            return;
+          }
+
           await win.unminimize();
           await win.show();
           await win.setFocus();
@@ -425,99 +431,80 @@ export default function StickyCard() {
         {manualInput || " "}
       </pre>
       <div
-        className={`origin-top-left overflow-auto bg-transparent transition-[opacity,width,height] duration-75 pointer-events-auto ${scrollbarClass} ${dragModifierPressed ? "cursor-move" : ""}`}
+        className={`origin-top-left bg-transparent transition-opacity duration-75 pointer-events-auto ${dragModifierPressed ? "cursor-move" : ""}`}
         style={{
           opacity,
-          width: `${contentSize.width}px`,
-          height: `${contentSize.height}px`,
+          width: `${contentSize.width * scale}px`,
+          height: `${contentSize.height * scale}px`,
         }}
       >
         <div
-          className="relative"
-          style={{
-            width: `${contentSize.width * scale}px`,
-            height: `${contentSize.height * scale}px`,
-            minWidth: `${contentSize.width}px`,
-            minHeight: `${contentSize.height}px`,
-            }}
-          >
-          <div
-            style={{
-              width: `${contentSize.width}px`,
-              height: `${contentSize.height}px`,
-              transform: `scale(${scale})`,
-              transformOrigin: "top left",
-            }}
-          >
-          <div
-            ref={editorRef}
-            contentEditable
-            suppressContentEditableWarning
-            data-placeholder="粘贴代码到这里实时预览"
-            className={[
-              `h-full overflow-x-scroll overflow-y-scroll bg-zinc-900/95 p-8 font-mono text-base leading-7 text-zinc-100 outline-none ${dragModifierPressed ? "cursor-move" : ""} ${scrollbarClass}`,
-              "pt-10",
-              "whitespace-pre",
-              "empty:before:pointer-events-none empty:before:text-zinc-500 empty:before:content-[attr(data-placeholder)]",
-              "[&_.shiki]:!bg-transparent",
-              "[&_.shiki]:p-0",
-              "[&_.shiki]:m-0",
-              "[&_.shiki_pre]:m-0",
-              "[&_.shiki_pre]:bg-transparent",
-              "[&_.shiki_pre]:overflow-visible",
-              "[&_.shiki_code]:font-mono",
-            ].join(" ")}
-            onInput={(e) => {
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          data-placeholder="粘贴代码到这里实时预览"
+          className={[
+            `h-full overflow-x-scroll overflow-y-scroll bg-zinc-900/95 p-8 font-mono text-base leading-7 text-zinc-100 outline-none ${scrollbarClass}`,
+            "pt-10",
+            "whitespace-pre",
+            "empty:before:pointer-events-none empty:before:text-zinc-500 empty:before:content-[attr(data-placeholder)]",
+            "[&_.shiki]:!bg-transparent",
+            "[&_.shiki]:p-0",
+            "[&_.shiki]:m-0",
+            "[&_.shiki_pre]:m-0",
+            "[&_.shiki_pre]:bg-transparent",
+            "[&_.shiki_pre]:overflow-visible",
+            "[&_.shiki_code]:font-mono",
+          ].join(" ")}
+          onInput={(e) => {
+            const current = e.currentTarget;
+            pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
+            pendingCaretRef.current = getCaretOffset(current);
+            const nextText = current.innerText.replace(/\r/g, "");
+            setManualInput(nextText);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              insertPlainTextAtSelection("\n");
               const current = e.currentTarget;
               pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
               pendingCaretRef.current = getCaretOffset(current);
-              const nextText = current.innerText.replace(/\r/g, "");
-              setManualInput(nextText);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                insertPlainTextAtSelection("\n");
-                const current = e.currentTarget;
-                pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
-                pendingCaretRef.current = getCaretOffset(current);
-                setManualInput(current.innerText.replace(/\r/g, ""));
-                return;
-              }
-              if (e.key === "Tab") {
-                e.preventDefault();
-                insertPlainTextAtSelection("  ");
-                const current = e.currentTarget;
-                pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
-                pendingCaretRef.current = getCaretOffset(current);
-                setManualInput(current.innerText.replace(/\r/g, ""));
-              }
-            }}
-            onWheel={(e) => {
-              if (isModifierPressed(e, zoomModifier)) {
-                e.preventDefault();
-                const delta = e.deltaY;
-                setScale((s) => clamp(s + (delta > 0 ? -0.06 : 0.06), MIN_SCALE, MAX_SCALE));
-                return;
-              }
-              if (isModifierPressed(e, opacityModifier)) {
-                e.preventDefault();
-                e.stopPropagation();
-                const delta = e.deltaY;
-                setOpacity((o) => clamp(o + (delta > 0 ? -0.08 : 0.08), 0, 1));
-                return;
-              }
-            }}
-            spellCheck={false}
-            data-tauri-drag-region={false}
-          />
-          {highlightError && (
-            <div className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-red-900/30 px-2 py-1 text-xs text-red-300">
-              代码高亮错误: {highlightError}
-            </div>
-          )}
+              setManualInput(current.innerText.replace(/\r/g, ""));
+              return;
+            }
+            if (e.key === "Tab") {
+              e.preventDefault();
+              insertPlainTextAtSelection("  ");
+              const current = e.currentTarget;
+              pendingScrollRef.current = { top: current.scrollTop, left: current.scrollLeft };
+              pendingCaretRef.current = getCaretOffset(current);
+              setManualInput(current.innerText.replace(/\r/g, ""));
+            }
+          }}
+          onWheel={(e) => {
+            if (isModifierPressed(e, zoomModifier)) {
+              e.preventDefault();
+              const delta = e.deltaY;
+              setScale((s) => clamp(s + (delta > 0 ? -0.06 : 0.06), MIN_SCALE, MAX_SCALE));
+              return;
+            }
+            if (isModifierPressed(e, opacityModifier)) {
+              e.preventDefault();
+              e.stopPropagation();
+              const delta = e.deltaY;
+              setOpacity((o) => clamp(o + (delta > 0 ? -0.08 : 0.08), 0, 1));
+              return;
+            }
+          }}
+          spellCheck={false}
+          data-tauri-drag-region={false}
+        />
+        {highlightError && (
+          <div className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-red-900/30 px-2 py-1 text-xs text-red-300">
+            代码高亮错误: {highlightError}
           </div>
-        </div>
+        )}
       </div>
       {settingsOpen ? (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
